@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Prosperity Secret Santa</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+
+        @font-face {
+            font-family: 'Ubuntu';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('/fonts/Ubuntu.woff2') format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        body {
+            margin-top: 5em;
+            margin-left: 10%;
+            margin-right: 10%;
+            font-family: 'Ubuntu', serif;
+        }
+
+        main {
+            width: 90%;
+        }
+
+        @media only screen and (max-width: 600px) {
+            body {
+                margin-left: 1.5em;
+                margin-right: 1.5em;
+            }
+
+            main {
+                width: 100%;
+            }
+        }
+
+        a {
+            color: #960000;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Prosperity Secret Santa</h1>
+    <div>
+        {{if .LoggedIn}}
+            <div>
+                <img src="{{.ProfilePicture}}" alt="Profile Picture"/>
+                <span>{{.ProfileName}}</span>
+            </div>
+            <a href="/logout">Logout</a>
+        {{else}}
+            <a href="/login">Login</a>
+        {{end}}
+    </div>
+</header>
+<main>
+    <p>🎅</p>
+</main>
+</body>
+</html>
