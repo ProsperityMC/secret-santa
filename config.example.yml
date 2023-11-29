@@ -1,0 +1,10 @@
+listen: ':8080'
+login:
+  id: 'discord app id'
+  token: 'discord token'
+  redirectUrl: 'redirect url'
+  baseUrl: 'base url'
+  guild:
+    id: 'guild id'
+    roles:
+      - 'required role id'

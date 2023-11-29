@@ -1,4 +1,4 @@
-package utils
+package main
 
 type DiscordMember struct {
 	Avatar string      `json:"avatar,omitempty"`

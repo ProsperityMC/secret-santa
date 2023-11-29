@@ -1,16 +1,11 @@
 package main
 
-type Config struct {
-	Listen string       `yaml:"listen"`
-	Auth   AuthConfig   `yaml:"auth"`
-	Login  LoginConfig  `yaml:"login"`
-	Slots  []SlotConfig `yaml:"slots"`
-}
+import "time"
 
-type AuthConfig struct {
-	Issuer string `yaml:"issuer"`
-	Key    string `yaml:"key"`
-	Public string `yaml:"public"`
+type Config struct {
+	Listen  string      `yaml:"listen"`
+	Login   LoginConfig `yaml:"login"`
+	EndDate time.Time   `yaml:"endDate"`
 }
 
 type LoginConfig struct {
@@ -24,10 +19,4 @@ type LoginConfig struct {
 type GuildConfig struct {
 	Id    string   `yaml:"id"`
 	Roles []string `yaml:"roles"`
-}
-
-type SlotConfig struct {
-	Name   string `yaml:"name"`
-	Width  int    `yaml:"width"`
-	Height int    `yaml:"height"`
 }

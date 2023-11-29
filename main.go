@@ -1,27 +1,53 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
+	"errors"
+	"flag"
 	"fmt"
-	"github.com/ProsperityMC/secret-santa/utils"
+	"github.com/1f349/cache"
+	"github.com/MrMelon54/exit-reload"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"sync"
+	"strconv"
+	"strings"
 	"time"
 )
 
+var (
+	configFlag string
+	//go:embed index.go.html
+	indexGoHtml string
+	//go:embed Ubuntu.woff2
+	ubuntuFont []byte
+)
+
+func loadIndexPageTemplate() (*template.Template, error) {
+	return template.New("secret-santa").Parse(indexGoHtml)
+}
+
+const CustomDateFormat = "Mon, 2 Jan 2006 15:04 MST"
+
 func main() {
-	openConf, err := os.Open(".data/config.yml")
+	flag.StringVar(&configFlag, "conf", "config.yml", "Path to the config file")
+	flag.Parse()
+
+	startTime := time.Now()
+
+	openConf, err := os.Open(configFlag)
 	if err != nil {
-		log.Fatal("Failed to open '.data/config.yml':", err)
+		log.Fatalf("Failed to open '%s': %s\n", configFlag, err)
 	}
 	var conf Config
 	err = yaml.NewDecoder(openConf).Decode(&conf)
@@ -42,40 +68,69 @@ func main() {
 		Endpoint:     discord.Endpoint,
 	}
 
-	allowedStates := make(map[string]struct{})
-	statesLock := &sync.RWMutex{}
+	stateCache := cache.New[uuid.UUID, uuid.UUID]()
+	userCache := cache.New[uuid.UUID, DiscordMember]()
+
+	pages, err := loadIndexPageTemplate()
+	if err != nil {
+		log.Fatalln("[Error] loadIndexPageTemplate:", err)
+	}
 
 	router := httprouter.New()
 	router.GET("/", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		sessId := getSessionUuid(rw, req)
 		rw.WriteHeader(http.StatusOK)
-		rw.Write()
-		http.Error(rw, "Prosperity r/place API endpoint!", http.StatusOK)
-	})
-	router.GET("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		u := uuid.NewString()
-		statesLock.Lock()
-		allowedStates[u] = struct{}{}
-		statesLock.Unlock()
-		http.Redirect(rw, req, oauthConf.AuthCodeURL(u), http.StatusTemporaryRedirect)
-	})
-	router.GET("/callback", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		z := req.FormValue("state")
-		statesLock.RLock()
-		if _, ok := allowedStates[z]; !ok {
-			statesLock.RUnlock()
-			rw.WriteHeader(http.StatusBadRequest)
-			_, _ = rw.Write([]byte("State does not match."))
+		user, ok := userCache.Get(sessId)
+		if !ok {
+			_ = pages.Execute(rw, map[string]any{
+				"LoggedIn":       false,
+				"ProfilePicture": "about:blank",
+				"ProfileName":    "Wumpus",
+				"EndDate":        conf.EndDate.Format(CustomDateFormat),
+			})
 			return
 		}
-		statesLock.RUnlock()
-		statesLock.Lock()
-		delete(allowedStates, z)
-		statesLock.Unlock()
+		_ = pages.Execute(rw, map[string]any{
+			"LoggedIn":       true,
+			"ProfilePicture": generateAvatarUrl(user, conf.Login.Guild.Id),
+			"ProfileName":    user.User.Username,
+			"EndDate":        conf.EndDate.Format(CustomDateFormat),
+		})
+	})
+	router.GET("/Ubuntu.woff2", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.ServeContent(rw, req, "Ubuntu.woff2", startTime, bytes.NewReader(ubuntuFont))
+	})
+	router.POST("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		sessId := getSessionUuid(rw, req)
+		stateId := uuid.New()
+		stateCache.Set(stateId, sessId, time.Now().Add(15*time.Minute))
+		http.Redirect(rw, req, oauthConf.AuthCodeURL(stateId.String()), http.StatusFound)
+	})
+	router.POST("/logout", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.SetCookie(rw, &http.Cookie{
+			Name:     "session-id",
+			Path:     "/",
+			MaxAge:   -1,
+			SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(rw, req, "/", http.StatusFound)
+	})
+	router.GET("/callback", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		sessId := getSessionUuid(rw, req)
+		stateId, err := uuid.Parse(req.FormValue("state"))
+		if err != nil {
+			http.Error(rw, "Invalid state parameter", http.StatusBadRequest)
+			return
+		}
+		if checkSessId, ok := stateCache.Get(stateId); !ok || sessId != checkSessId {
+			http.Error(rw, "State does not match", http.StatusBadRequest)
+			return
+		}
+		stateCache.Delete(stateId)
 
 		token, err := oauthConf.Exchange(context.Background(), req.FormValue("code"))
 		if err != nil {
-			rw.WriteHeader(http.StatusInternalServerError)
-			_, _ = rw.Write([]byte(err.Error()))
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -101,7 +156,7 @@ func main() {
 			_ = Body.Close()
 		}(res.Body)
 
-		var dm utils.DiscordMember
+		var dm DiscordMember
 		j := json.NewDecoder(res.Body)
 		err = j.Decode(&dm)
 		if err != nil {
@@ -109,43 +164,75 @@ func main() {
 			return
 		}
 
-		for _, i := range dm.Roles {
-			if _, ok := roleMap[i]; ok {
-				goto hasRole
-			}
+		if hasRequiredRole(dm, roleMap) {
+			userCache.Set(sessId, dm, time.Now().Add(12*time.Hour))
+			http.Redirect(rw, req, "/", http.StatusFound)
+			return
 		}
 
 		http.Error(rw, "User is missing a required role in the Discord guild", http.StatusConflict)
-		return
-
-	hasRole:
-		// no need for the client to get the roles
-		dm.Roles = nil
-
-		dcToken, _ := encryptDiscordTokens(&privKey.PublicKey, token)
-
-		u := uuid.NewString()
-		h, err := signer.GenerateJwt(u, u, time.Hour*24, utils.DiscordInfo{UserId: dm.User.Id, Name: dm.User.Username, Discord: dcToken})
-		if err != nil {
-			http.Error(rw, "Failed to generate JWT token", http.StatusInternalServerError)
-		}
-
-		_, _ = fmt.Fprintf(rw, "<!DOCTYPE html><html><head><script>window.onload=function(){window.opener.postMessage(")
-		encoder := json.NewEncoder(rw)
-		_ = encoder.Encode(map[string]any{
-			"token":  map[string]string{"access": h},
-			"member": dm,
-		})
-		_, _ = fmt.Fprintf(rw, ",\"%s\");window.close();}</script></head></html>", conf.Login.BaseUrl)
 	})
 	server := &http.Server{
 		Handler: router,
 		Addr:    conf.Listen,
 	}
 	go func() {
+		log.Printf("[SecretSanta] Listening for HTTP requests on '%s'\n", server.Addr)
 		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			log.Println("[Main] Listen and serve error:", err)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Println("[SecretSanta] Listen and serve error:", err)
 		}
 	}()
+
+	exit_reload.ExitReload("SecretSanta", func() {}, func() {
+		_ = server.Close()
+	})
+}
+
+func hasRequiredRole(dm DiscordMember, roleMap map[string]struct{}) bool {
+	for _, i := range dm.Roles {
+		if _, ok := roleMap[i]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func getSessionUuid(rw http.ResponseWriter, req *http.Request) uuid.UUID {
+	cookie, err := req.Cookie("session-id")
+	if err == nil {
+		if parse, err := uuid.Parse(cookie.Value); err == nil {
+			return parse
+		}
+	}
+	u := uuid.New()
+	http.SetCookie(rw, &http.Cookie{
+		Name:     "session-id",
+		Value:    u.String(),
+		Path:     "/",
+		Expires:  time.Now().AddDate(0, 3, 0),
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	return u
+}
+
+func generateAvatarUrl(member DiscordMember, guildId string) string {
+	if member.Avatar != "" {
+		ext := "png"
+		if strings.HasPrefix(member.Avatar, "a_") {
+			ext = "gif"
+		}
+		return fmt.Sprintf("https://cdn.discordapp.com/guilds/%s/users/%s/avatars/%s.%s?size=512", guildId, member.User.Id, member.Avatar, ext)
+	}
+	if member.User.Avatar != "" {
+		ext := "png"
+		if strings.HasPrefix(member.User.Avatar, "a_") {
+			ext = "gif"
+		}
+		return fmt.Sprintf("https://cdn.discordapp.com/avatars/%s/%s.%s?size=512", member.User.Id, member.User.Avatar, ext)
+	}
+	// returns 0 on error, that's all we care about
+	userId, _ := strconv.ParseInt(member.User.Id, 10, 64)
+	return fmt.Sprintf("https://cdn.discordapp.com/embed/avatars/%d.png?size=512", (userId>>22)%6)
 }

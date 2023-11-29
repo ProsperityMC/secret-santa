@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Prosperity Secret Santa</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+
+        @font-face {
+            font-family: 'Ubuntu';
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('/Ubuntu.woff2') format('woff2');
+            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+        }
+
+        html, body {
+            margin: 0;
+            font-family: 'Ubuntu', serif;
+            color: #fcb600;
+            background-color: #242527;
+        }
+
+        header {
+            display: flex;
+            padding: 32px 0;
+        }
+
+        header h1 {
+            text-align: center;
+            font-size: 72px;
+            flex-shrink: 0;
+            margin: 0;
+        }
+
+        header .empty {
+            flex-basis: 100%;
+        }
+
+        header .profile {
+            flex-basis: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+        }
+
+        header .profile img {
+            border-radius: 25%;
+            width: 64px;
+            height: 64px;
+        }
+
+        header .profile .name {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        header .profile form button {
+            border: none;
+            border-radius: 8px;
+            background-color: #ffc10b;
+            padding: 20px 40px;
+            font-size: 26px;
+            color: black;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        main {
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        main h1 {
+            font-size: 72px;
+        }
+
+        main p {
+            font-size: 32px;
+        }
+
+        main form button {
+            border: none;
+            border-radius: 8px;
+            background: #b41d01 linear-gradient(to right, #960000, #b41d01);
+            padding: 20px 40px;
+            font-size: 26px;
+            color: #dadada;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        a {
+            color: #fcb600;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <div class="empty"></div>
+    <h1>Prosperity Secret Santa</h1>
+    <div class="profile">
+        {{if .LoggedIn}}
+            <img src="{{.ProfilePicture}}" alt="Profile Picture"/>
+            <div class="name">{{.ProfileName}}</div>
+            <form method="POST" action="/logout">
+                <button type="submit">Logout</button>
+            </form>
+        {{else}}
+            <form method="POST" action="/login">
+                <button type="submit">Login</button>
+            </form>
+        {{end}}
+    </div>
+</header>
+<main>
+    <h1>🎅</h1>
+    <p>Secret Santa's will be picked on {{.EndDate}}. Please register before that date to be picked to receive a present.</p>
+    {{if .LoggedIn}}
+        <form method="POST" action="/register">
+            <button type="submit">Register for Secret Santa</button>
+        </form>
+    {{else}}
+        <p>Login with the button above to be able to register.</p>
+    {{end}}
+</main>
+</body>
+</html>
