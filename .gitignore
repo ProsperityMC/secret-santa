@@ -1,3 +1,5 @@
 .idea/
+.data/
 secret-santa
 config.yml
+identifier.sqlite

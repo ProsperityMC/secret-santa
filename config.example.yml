@@ -8,3 +8,7 @@ login:
     id: 'guild id'
     roles:
       - 'required role id'
+# EndDate uses RFC3339 format: 2006-01-02T15:04:05Z
+endDate: 2023-12-12T00:00:00Z
+# random seed number
+seed: 387429472

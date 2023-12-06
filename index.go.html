@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8"/>
     <title>Prosperity Secret Santa</title>
     <style>
         :root {
@@ -30,7 +31,7 @@
 
         header h1 {
             text-align: center;
-            font-size: 72px;
+            font-size: x-large;
             flex-shrink: 0;
             margin: 0;
         }
@@ -49,12 +50,12 @@
 
         header .profile img {
             border-radius: 25%;
-            width: 64px;
-            height: 64px;
+            width: 32px;
+            height: 32px;
         }
 
         header .profile .name {
-            font-size: 26px;
+            font-size: large;
             font-weight: 700;
         }
 
@@ -62,8 +63,8 @@
             border: none;
             border-radius: 8px;
             background-color: #ffc10b;
-            padding: 20px 40px;
-            font-size: 26px;
+            padding: 10px 20px;
+            font-size: large;
             color: black;
             font-weight: 700;
             cursor: pointer;
@@ -77,22 +78,27 @@
         }
 
         main h1 {
-            font-size: 72px;
+            font-size: xxx-large;
         }
 
         main p {
-            font-size: 32px;
+            font-size: large;
         }
 
         main form button {
             border: none;
             border-radius: 8px;
             background: #b41d01 linear-gradient(to right, #960000, #b41d01);
-            padding: 20px 40px;
-            font-size: 26px;
+            padding: 10px 20px;
+            font-size: large;
             color: #dadada;
             font-weight: 700;
             cursor: pointer;
+        }
+
+        main code {
+            font-family: monospace;
+            color: #fcb600;
         }
 
         a {
@@ -120,11 +126,28 @@
 </header>
 <main>
     <h1>🎅</h1>
-    <p>Secret Santa's will be picked on {{.EndDate}}. Please register before that date to be picked to receive a present.</p>
+    <p>Secret Santa's will be picked on {{.EndDate}}. Please register before that date to be picked to receive a
+        present.</p>
     {{if .LoggedIn}}
-        <form method="POST" action="/register">
-            <button type="submit">Register for Secret Santa</button>
-        </form>
+        {{if .HasEnded}}
+            <p>Registration has ended</p>
+            {{if gt (len .SecretPlayer) 0}}
+                <p>You are Secret Santa for <code>{{.SecretPlayer}}</code></p>
+            {{end}}
+        {{else}}
+            {{if .HasRegistered}}
+                <p>You are registered for Secret Santa, please return later to receive your player.</p>
+            {{else}}
+                <form method="POST" action="/register">
+                    <div>
+                        <label>Minecraft Username: <input type="text" name="mc_user"></label>
+                    </div>
+                    <div>
+                        <button type="submit">Register for Secret Santa</button>
+                    </div>
+                </form>
+            {{end}}
+        {{end}}
     {{else}}
         <p>Login with the button above to be able to register.</p>
     {{end}}

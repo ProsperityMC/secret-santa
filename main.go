@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	_ "embed"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"github.com/MrMelon54/exit-reload"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
@@ -20,8 +22,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -42,6 +46,8 @@ const CustomDateFormat = "Mon, 2 Jan 2006 15:04 MST"
 func main() {
 	flag.StringVar(&configFlag, "conf", "config.yml", "Path to the config file")
 	flag.Parse()
+
+	wd := filepath.Dir(configFlag)
 
 	startTime := time.Now()
 
@@ -76,6 +82,27 @@ func main() {
 		log.Fatalln("[Error] loadIndexPageTemplate:", err)
 	}
 
+	db, err := sql.Open("sqlite3", filepath.Join(wd, "players.db"))
+	if err != nil {
+		log.Fatalln("[Error] Open players.db:", err)
+	}
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS players
+(
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    mc_user      TEXT UNIQUE NOT NULL,
+    discord_id   TEXT UNIQUE NOT NULL,
+    discord_user TEXT UNIQUE NOT NULL
+);`)
+	if err != nil {
+		log.Fatalln("[Error] Failed to initialise database")
+	}
+
+	secretSantaResolve := &sync.RWMutex{}
+	secretSantaUsers, err := resolvePlayers(db, conf.Seed)
+	if err != nil {
+		log.Fatalln("Failed to resolve players:", err)
+	}
+
 	router := httprouter.New()
 	router.GET("/", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		sessId := getSessionUuid(rw, req)
@@ -90,11 +117,18 @@ func main() {
 			})
 			return
 		}
+		secretSantaResolve.RLock()
+		secretPlayer, hasRegistered := secretSantaUsers[user.User.Id]
+		secretSantaResolve.RUnlock()
+		hasEnded := time.Now().After(conf.EndDate)
 		_ = pages.Execute(rw, map[string]any{
 			"LoggedIn":       true,
 			"ProfilePicture": generateAvatarUrl(user, conf.Login.Guild.Id),
 			"ProfileName":    user.User.Username,
 			"EndDate":        conf.EndDate.Format(CustomDateFormat),
+			"HasRegistered":  hasRegistered,
+			"HasEnded":       hasEnded,
+			"SecretPlayer":   secretPlayer,
 		})
 	})
 	router.GET("/Ubuntu.woff2", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
@@ -113,6 +147,34 @@ func main() {
 			MaxAge:   -1,
 			SameSite: http.SameSiteLaxMode,
 		})
+		http.Redirect(rw, req, "/", http.StatusFound)
+	})
+	router.POST("/register", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		mcUser := req.FormValue("mc_user")
+		if mcUser == "" {
+			http.Error(rw, "Missing Minecraft username", http.StatusBadRequest)
+			return
+		}
+		hasEnded := time.Now().After(conf.EndDate)
+		if hasEnded {
+			http.Error(rw, "Registration has ended", http.StatusTeapot)
+			return
+		}
+		sessId := getSessionUuid(rw, req)
+		user, ok := userCache.Get(sessId)
+		if !ok {
+			http.Error(rw, "Error: Not logged in", http.StatusForbidden)
+			return
+		}
+		_, err := db.Exec(`INSERT INTO players (mc_user, discord_id, discord_user) VALUES (?, ?, ?)`, mcUser, user.User.Id, user.User.Username)
+		if err != nil {
+			log.Printf("Failed to register user %s - %s: %s\n", user.User.Id, user.User.Username, err)
+			http.Error(rw, "Failed to register your user", http.StatusInternalServerError)
+			return
+		}
+		secretSantaResolve.Lock()
+		secretSantaUsers, _ = resolvePlayers(db, conf.Seed)
+		secretSantaResolve.Unlock()
 		http.Redirect(rw, req, "/", http.StatusFound)
 	})
 	router.GET("/callback", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
@@ -187,6 +249,49 @@ func main() {
 	exit_reload.ExitReload("SecretSanta", func() {}, func() {
 		_ = server.Close()
 	})
+}
+
+func resolvePlayers(db *sql.DB, seed int64) (map[string]string, error) {
+	a := make(map[string]string)
+	query, err := db.Query("SELECT discord_id, discord_user FROM players ORDER BY id")
+	if err != nil {
+		return nil, err
+	}
+	discordIds := make([]string, 0)
+	discordNames := make([]string, 0)
+	for query.Next() {
+		var id, name string
+		err := query.Scan(&id, &name)
+		if err != nil {
+			return nil, err
+		}
+		discordIds = append(discordIds, id)
+		discordNames = append(discordNames, name)
+	}
+
+	// prevent shuffle crashes
+	if len(discordNames) < 3 {
+		for i := range discordIds {
+			a[discordIds[i]] = ""
+		}
+		return a, nil
+	}
+
+	shuffledNames := ShufflePlayerNames(discordNames, seed)
+	for i := range discordIds {
+		a[discordIds[i]] = shuffledNames[i]
+	}
+	return a, query.Err()
+}
+
+func ShufflePlayerNames(a []string, seed int64) []string {
+	l := len(a)
+	n := ShuffledIntSlice(l, seed)
+	b := make([]string, l)
+	for i := range b {
+		b[i] = a[n[i]]
+	}
+	return b
 }
 
 func hasRequiredRole(dm DiscordMember, roleMap map[string]struct{}) bool {
