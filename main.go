@@ -35,8 +35,12 @@ var (
 	indexGoHtml string
 	//go:embed Ubuntu.woff2
 	ubuntuFont []byte
-	//go:embed christmas-logo.png
-	christmasLogo []byte
+	//go:embed prosperity-winter.png
+	christmasLogoPng []byte
+	//go:embed prosperity-winter.svg
+	christmasLogoSvg []byte
+	//go:embed happy-holidays.png
+	happyHolidaysPng []byte
 )
 
 func loadIndexPageTemplate() (*template.Template, error) {
@@ -44,6 +48,11 @@ func loadIndexPageTemplate() (*template.Template, error) {
 }
 
 const CustomDateFormat = "Mon, 2 Jan 2006 15:04 MST"
+
+type PlayerData struct {
+	DiscordUser string
+	McUser      string
+}
 
 func main() {
 	flag.StringVar(&configFlag, "conf", "config.yml", "Path to the config file")
@@ -130,14 +139,21 @@ func main() {
 			"EndDate":        conf.EndDate.Format(CustomDateFormat),
 			"HasRegistered":  hasRegistered,
 			"HasEnded":       hasEnded,
-			"SecretPlayer":   secretPlayer,
+			"SecretPlayer":   secretPlayer.DiscordUser,
+			"McPlayer":       secretPlayer.McUser,
 		})
 	})
 	router.GET("/Ubuntu.woff2", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		http.ServeContent(rw, req, "Ubuntu.woff2", startTime, bytes.NewReader(ubuntuFont))
 	})
 	router.GET("/christmas-logo.png", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		http.ServeContent(rw, req, "christmas-logo.png", startTime, bytes.NewReader(christmasLogo))
+		http.ServeContent(rw, req, "christmas-logo.png", startTime, bytes.NewReader(christmasLogoPng))
+	})
+	router.GET("/christmas-logo.svg", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.ServeContent(rw, req, "christmas-logo.svg", startTime, bytes.NewReader(christmasLogoSvg))
+	})
+	router.GET("/happy-holidays.png", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.ServeContent(rw, req, "happy-holidays.png", startTime, bytes.NewReader(happyHolidaysPng))
 	})
 	router.POST("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		sessId := getSessionUuid(rw, req)
@@ -256,43 +272,46 @@ func main() {
 	})
 }
 
-func resolvePlayers(db *sql.DB, seed int64) (map[string]string, error) {
-	a := make(map[string]string)
-	query, err := db.Query("SELECT discord_id, discord_user FROM players ORDER BY id")
+func resolvePlayers(db *sql.DB, seed int64) (map[string]PlayerData, error) {
+	a := make(map[string]PlayerData)
+	query, err := db.Query("SELECT discord_id, discord_user, mc_user FROM players ORDER BY id")
 	if err != nil {
 		return nil, err
 	}
 	discordIds := make([]string, 0)
-	discordNames := make([]string, 0)
+	playerData := make([]PlayerData, 0)
 	for query.Next() {
-		var id, name string
-		err := query.Scan(&id, &name)
+		var id, discordName, mcName string
+		err := query.Scan(&id, &discordName, mcName)
 		if err != nil {
 			return nil, err
 		}
 		discordIds = append(discordIds, id)
-		discordNames = append(discordNames, name)
+		playerData = append(playerData, PlayerData{
+			DiscordUser: discordName,
+			McUser:      mcName,
+		})
 	}
 
 	// prevent shuffle crashes
-	if len(discordNames) < 3 {
+	if len(playerData) < 3 {
 		for i := range discordIds {
-			a[discordIds[i]] = ""
+			a[discordIds[i]] = PlayerData{}
 		}
 		return a, nil
 	}
 
-	shuffledNames := ShufflePlayerNames(discordNames, seed)
+	shuffledNames := ShufflePlayerNames(playerData, seed)
 	for i := range discordIds {
 		a[discordIds[i]] = shuffledNames[i]
 	}
 	return a, query.Err()
 }
 
-func ShufflePlayerNames(a []string, seed int64) []string {
+func ShufflePlayerNames(a []PlayerData, seed int64) []PlayerData {
 	l := len(a)
 	n := ShuffledIntSlice(l, seed)
-	b := make([]string, l)
+	b := make([]PlayerData, l)
 	for i := range b {
 		b[i] = a[n[i]]
 	}
