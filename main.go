@@ -139,9 +139,25 @@ func main() {
 			"EndDate":        conf.EndDate.Format(CustomDateFormat),
 			"HasRegistered":  hasRegistered,
 			"HasEnded":       hasEnded,
-			"SecretPlayer":   secretPlayer.DiscordUser,
-			"McPlayer":       secretPlayer.McUser,
+			"SecretPlayer":   secretPlayer,
 		})
+	})
+	router.GET("/players", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		query, err := db.Query(`SELECT discord_user from players`)
+		if err != nil {
+			http.Error(rw, "Database query error", http.StatusInternalServerError)
+			return
+		}
+		a := make([]string, 0)
+		for query.Next() {
+			var b string
+			err := query.Scan(&b)
+			if err != nil {
+				http.Error(rw, "Database query error", http.StatusInternalServerError)
+				return
+			}
+		}
+		_ = json.NewEncoder(rw).Encode(a)
 	})
 	router.GET("/Ubuntu.woff2", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		http.ServeContent(rw, req, "Ubuntu.woff2", startTime, bytes.NewReader(ubuntuFont))

@@ -212,7 +212,7 @@
                     <p>Registration has ended.</p>
                     {{if .LoggedIn}}
                         {{if gt (len .SecretPlayer) 0}}
-                            <p>You are Secret Santa for <code>{{.SecretPlayer}}</code></p>
+                            <p>You are Secret Santa for <code>{{.SecretPlayer.DiscordUser}}</code> - Minecraft IGN: <code>{{.SecretPlayer.McUser}}</code></p>
                         {{end}}
                     {{end}}
                 {{else}}
