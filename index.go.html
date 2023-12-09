@@ -110,6 +110,11 @@
             background-color: #fbbd23;
         }
 
+        #header-end img.avatar {
+            width: 1.75rem;
+            height: 1.75rem;
+        }
+
         button {
             background-color: #fecd49;
             transition-duration: .15s;
@@ -172,18 +177,18 @@
     <nav id="header">
             <span id="header-start">
                 <a id="header-home" href="/">
-                    <img alt="" loading="lazy" width="534" height="534" decoding="async" data-nimg="1" src="/christmas-logo.png">
+                    <img alt="" loading="lazy" width="256" height="256" decoding="async" data-nimg="1" src="/christmas-logo.png">
                     <header>Prosperity Secret Santa</header>
                 </a>
                 <a referrerpolicy="no-referrer" target="_blank" href="https://prosperitymc.net">Prosperity MC</a>
             </span>
         <span id="header-end">
             {{if .LoggedIn}}
-                <img src="{{.ProfilePicture}}" alt="Profile Picture"/>
+                <img class="avatar" src="{{.ProfilePicture}}" alt="Profile Picture"/>
                 <span class="name">{{.ProfileName}}</span>
                 <form method="POST" action="/logout">
-                        <button type="submit">Logout</button>
-                    </form>
+                    <button type="submit">Logout</button>
+                </form>
             {{else}}
                 <form method="POST" action="/login">
                     <button type="submit">Login</button>
