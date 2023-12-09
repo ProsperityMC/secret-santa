@@ -282,7 +282,7 @@ func resolvePlayers(db *sql.DB, seed int64) (map[string]PlayerData, error) {
 	playerData := make([]PlayerData, 0)
 	for query.Next() {
 		var id, discordName, mcName string
-		err := query.Scan(&id, &discordName, mcName)
+		err := query.Scan(&id, &discordName, &mcName)
 		if err != nil {
 			return nil, err
 		}
