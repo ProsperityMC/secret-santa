@@ -35,6 +35,8 @@ var (
 	indexGoHtml string
 	//go:embed Ubuntu.woff2
 	ubuntuFont []byte
+	//go:embed christmas-logo.png
+	christmasLogo []byte
 )
 
 func loadIndexPageTemplate() (*template.Template, error) {
@@ -133,6 +135,9 @@ func main() {
 	})
 	router.GET("/Ubuntu.woff2", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		http.ServeContent(rw, req, "Ubuntu.woff2", startTime, bytes.NewReader(ubuntuFont))
+	})
+	router.GET("/christmas-logo.png", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.ServeContent(rw, req, "christmas-logo.png", startTime, bytes.NewReader(christmasLogo))
 	})
 	router.POST("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		sessId := getSessionUuid(rw, req)

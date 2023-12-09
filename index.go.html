@@ -6,151 +6,224 @@
     <style>
         :root {
             color-scheme: light dark;
-        }
-
-        @font-face {
-            font-family: 'Ubuntu';
-            font-style: normal;
-            font-weight: 400;
-            font-display: swap;
-            src: url('/Ubuntu.woff2') format('woff2');
-            unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+            font-size: 16px;
+            line-height: 24px;
         }
 
         html, body {
             margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            font-size: 16px;
+        }
+
+        @font-face {
             font-family: 'Ubuntu', serif;
-            color: #fcb600;
-            background-color: #242527;
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+            src: url('/Ubuntu.woff2') format('woff2');
         }
 
-        header {
+        #header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            border-bottom-width: 1px;
+            transition-duration: 150ms;
+            user-select: none;
             display: flex;
-            padding: 32px 0;
-        }
-
-        header h1 {
-            text-align: center;
-            font-size: x-large;
-            flex-shrink: 0;
-            margin: 0;
-        }
-
-        header .empty {
-            flex-basis: 100%;
-        }
-
-        header .profile {
-            flex-basis: 100%;
-            display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
-            gap: 16px;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 1536px;
+            padding: 0.625rem 2rem;
         }
 
-        header .profile img {
-            border-radius: 25%;
-            width: 32px;
-            height: 32px;
+        #header-start {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
         }
 
-        header .profile .name {
-            font-size: large;
+        #header-end {
+            display: none;
+            flex-grow: 1;
+            gap: 2rem;
+            justify-content: flex-end;
+        }
+
+        @media (min-width: 768px) {
+            #header-end {
+                display: flex;
+            }
+        }
+
+        #header-home {
+            display: none;
+            flex-shrink: 0;
+            align-items: center;
             font-weight: 700;
         }
 
-        header .profile form button {
-            border: none;
-            border-radius: 8px;
-            background-color: #ffc10b;
-            padding: 10px 20px;
-            font-size: large;
-            color: black;
-            font-weight: 700;
+        @media (min-width: 768px) {
+            #header-home {
+                display: inline-flex;
+            }
+        }
+
+        #header-home img {
+            display: inline-block;
+            border-radius: 0.25rem;
+            width: 1.75rem;
+            height: 1.75rem;
+            color: transparent;
+        }
+
+        #header-home header {
+            display: none;
+            margin-left: 1rem;
+        }
+
+        @media (min-width: 1024px) {
+            #header-home header {
+                display: block;
+            }
+        }
+
+        #header-start a {
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        #header-end a {
+            padding: 0.25rem 1.5rem;
+            justify-items: end;
+            border-radius: 0.25rem;
+            background-color: #f59f0a;
+            transition-duration: 150ms;
+        }
+
+        #header-end a:hover {
+            background-color: #fbbd23;
+        }
+
+        button {
+            background-color: #fecd49;
+            transition-duration: .15s;
+            color: #111213;
+            padding: .25rem 1.5rem;
+            border-radius: .25rem;
+            border: 0;
+            font-size: 16px;
             cursor: pointer;
         }
 
-        main {
-            width: 100vw;
+        #content {
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 1536px;
+            padding-left: 2rem;
+            padding-right: 2rem;
+            padding-top: 4rem;
+            min-height: 90vh;
+        }
+
+        #content main {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            gap: 1.5rem;
         }
 
-        main h1 {
-            font-size: xxx-large;
+        #content main section {
+            text-align: center;
+            gap: 3rem;
+            flex-direction: column;
+            display: flex;
+            margin-top: 13rem;
+            margin-bottom: 13rem;
+            line-height: 1.625;
         }
 
-        main p {
-            font-size: large;
-        }
-
-        main form button {
-            border: none;
-            border-radius: 8px;
-            background: #b41d01 linear-gradient(to right, #960000, #b41d01);
-            padding: 10px 20px;
-            font-size: large;
-            color: #dadada;
+        #content main section header {
+            line-height: 1;
             font-weight: 700;
-            cursor: pointer;
+            color: #e4e6e7;
         }
 
-        main code {
-            font-family: monospace;
-            color: #fcb600;
+        .santa {
+            font-size: 72px;
         }
 
-        a {
-            color: #fcb600;
+        #content main section p {
+            line-height: 1.625;
+            color: #91969c;
+            font-weight: 500;
+            max-width: 42rem;
+            margin-left: auto;
+            margin-right: auto;
         }
     </style>
 </head>
 <body>
-<header>
-    <div class="empty"></div>
-    <h1>Prosperity Secret Santa</h1>
-    <div class="profile">
-        {{if .LoggedIn}}
-            <img src="{{.ProfilePicture}}" alt="Profile Picture"/>
-            <div class="name">{{.ProfileName}}</div>
-            <form method="POST" action="/logout">
-                <button type="submit">Logout</button>
-            </form>
-        {{else}}
-            <form method="POST" action="/login">
-                <button type="submit">Login</button>
-            </form>
-        {{end}}
-    </div>
-</header>
-<main>
-    <h1>🎅</h1>
-    <p>Secret Santa's will be picked on {{.EndDate}}. Please register before that date to be picked to receive a
-        present.</p>
-    {{if .LoggedIn}}
-        {{if .HasEnded}}
-            <p>Registration has ended</p>
-            {{if gt (len .SecretPlayer) 0}}
-                <p>You are Secret Santa for <code>{{.SecretPlayer}}</code></p>
-            {{end}}
-        {{else}}
-            {{if .HasRegistered}}
-                <p>You are registered for Secret Santa, please return later to receive your player.</p>
+<div id="app">
+    <nav id="header">
+            <span id="header-start">
+                <a id="header-home" href="/">
+                    <img alt="" loading="lazy" width="534" height="534" decoding="async" data-nimg="1" src="/christmas-logo.png">
+                    <header>Prosperity Secret Santa</header>
+                </a>
+                <a referrerpolicy="no-referrer" target="_blank" href="https://prosperitymc.net">Prosperity MC</a>
+            </span>
+        <span id="header-end">
+            {{if .LoggedIn}}
+                <img src="{{.ProfilePicture}}" alt="Profile Picture"/>
+                <span class="name">{{.ProfileName}}</span>
+                <form method="POST" action="/logout">
+                        <button type="submit">Logout</button>
+                    </form>
             {{else}}
-                <form method="POST" action="/register">
-                    <div>
-                        <label>Minecraft Username: <input type="text" name="mc_user"></label>
-                    </div>
-                    <div>
-                        <button type="submit">Register for Secret Santa</button>
-                    </div>
+                <form method="POST" action="/login">
+                    <button type="submit">Login</button>
                 </form>
             {{end}}
-        {{end}}
-    {{else}}
-        <p>Login with the button above to be able to register.</p>
-    {{end}}
-</main>
+        </span>
+    </nav>
+    <div id="content">
+        <main>
+            <section>
+                <header class="santa">🎅</header>
+                <p>Secret Santa's will be picked on {{.EndDate}}. Please register before that date to be picked to receive a present.</p>
+                {{if .HasEnded}}
+                    <p>Registration has ended.</p>
+                    {{if .LoggedIn}}
+                        {{if gt (len .SecretPlayer) 0}}
+                            <p>You are Secret Santa for <code>{{.SecretPlayer}}</code></p>
+                        {{end}}
+                    {{end}}
+                {{else}}
+                    {{if .LoggedIn}}
+                        {{if .HasRegistered}}
+                            <p>You are registered for Secret Santa, please return later for receive your player.</p>
+                        {{else}}
+                            <form method="POST" action="/register">
+                                <div>
+                                    <label>Minecraft Username: <input type="text" name="mc_user"></label>
+                                </div>
+                                <div>
+                                    <button type="submit">Register for Secret Santa</button>
+                                </div>
+                            </form>
+                        {{end}}
+                    {{else}}
+                        <p>Login with the button above to be able to register.</p>
+                    {{end}}
+                {{end}}
+            </section>
+        </main>
+    </div>
+</div>
 </body>
 </html>
