@@ -147,11 +147,11 @@ func main() {
 		rw.WriteHeader(http.StatusOK)
 		user, ok := userCache.Get(sessId)
 		if !ok {
-			router.NotFound.ServeHTTP(rw, req)
+			http.NotFound(rw, req)
 			return
 		}
 		if user.User.Id != conf.Login.AdminId {
-			router.NotFound.ServeHTTP(rw, req)
+			http.NotFound(rw, req)
 			return
 		}
 		query, err := db.Query(`SELECT discord_user from players`)
