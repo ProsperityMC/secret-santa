@@ -143,6 +143,17 @@ func main() {
 		})
 	})
 	router.GET("/players", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		sessId := getSessionUuid(rw, req)
+		rw.WriteHeader(http.StatusOK)
+		user, ok := userCache.Get(sessId)
+		if !ok {
+			router.NotFound.ServeHTTP(rw, req)
+			return
+		}
+		if user.User.Id != conf.Login.AdminId {
+			router.NotFound.ServeHTTP(rw, req)
+			return
+		}
 		query, err := db.Query(`SELECT discord_user from players`)
 		if err != nil {
 			http.Error(rw, "Database query error", http.StatusInternalServerError)
@@ -156,6 +167,7 @@ func main() {
 				http.Error(rw, "Database query error", http.StatusInternalServerError)
 				return
 			}
+			a = append(a, b)
 		}
 		_ = json.NewEncoder(rw).Encode(a)
 	})

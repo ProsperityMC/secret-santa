@@ -4,6 +4,7 @@ login:
   token: 'discord token'
   redirectUrl: 'redirect url'
   baseUrl: 'base url'
+  adminId: 'admin user id'
   guild:
     id: 'guild id'
     roles:

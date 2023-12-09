@@ -15,6 +15,7 @@ type LoginConfig struct {
 	Token       string      `yaml:"token"`
 	RedirectUrl string      `yaml:"redirectUrl"`
 	BaseUrl     string      `yaml:"baseUrl"`
+	AdminId     string      `yaml:"adminId"`
 	Guild       GuildConfig `yaml:"guild"`
 }
 
