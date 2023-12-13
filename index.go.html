@@ -45,6 +45,11 @@
             unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
         }
 
+        #app {
+            display: flex;
+            flex-direction: column;
+        }
+
         #header {
             position: sticky;
             top: 0;
@@ -55,8 +60,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-left: auto;
-            margin-right: auto;
             max-width: 1536px;
             padding: 0.625rem 2rem;
         }
@@ -140,13 +143,14 @@
             padding-left: 2rem;
             padding-right: 2rem;
             padding-top: 4rem;
-            min-height: 90vh;
+            flex-grow: 1;
         }
 
         #content main {
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+            margin: auto;
         }
 
         #content main section {
@@ -154,8 +158,8 @@
             gap: 3rem;
             flex-direction: column;
             display: flex;
-            margin-top: 13rem;
-            margin-bottom: 13rem;
+            margin-top: auto;
+            margin-bottom: auto;
             line-height: 1.625;
         }
 
