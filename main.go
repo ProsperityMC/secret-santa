@@ -197,12 +197,18 @@ func main() {
 	router.GET("/happy-holidays.png", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		http.ServeContent(rw, req, "happy-holidays.png", startTime, bytes.NewReader(happyHolidaysPng))
 	})
+	router.GET("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.Redirect(rw, req, "/", http.StatusFound)
+	})
 	router.POST("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		logger.Debug("Login handler called")
 		sessId := getSessionUuid(rw, req)
 		stateId := uuid.New()
 		stateCache.Set(stateId, sessId, time.Now().Add(15*time.Minute))
 		http.Redirect(rw, req, oauthConf.AuthCodeURL(stateId.String()), http.StatusFound)
+	})
+	router.GET("/logout", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		http.Redirect(rw, req, "/", http.StatusFound)
 	})
 	router.POST("/logout", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		logger.Debug("Logout handler called")
@@ -212,6 +218,9 @@ func main() {
 			MaxAge:   -1,
 			SameSite: http.SameSiteLaxMode,
 		})
+		http.Redirect(rw, req, "/", http.StatusFound)
+	})
+	router.GET("/register", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		http.Redirect(rw, req, "/", http.StatusFound)
 	})
 	router.POST("/register", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
