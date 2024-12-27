@@ -10,10 +10,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/1f349/cache"
-	"github.com/mrmelon54/exit-reload"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mrmelon54/exit-reload"
 	"github.com/ravener/discord-oauth2"
 	"golang.org/x/oauth2"
 	"gopkg.in/yaml.v3"
@@ -144,7 +144,6 @@ func main() {
 	})
 	router.GET("/players", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		sessId := getSessionUuid(rw, req)
-		rw.WriteHeader(http.StatusOK)
 		user, ok := userCache.Get(sessId)
 		if !ok {
 			http.NotFound(rw, req)
