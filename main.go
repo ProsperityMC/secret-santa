@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/1f349/cache"
+	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/mattn/go-sqlite3"
@@ -19,7 +20,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"html/template"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,6 +31,8 @@ import (
 
 var (
 	configFlag string
+	debugFlag  bool
+
 	//go:embed index.go.html
 	indexGoHtml string
 	//go:embed Ubuntu.woff2
@@ -49,6 +51,12 @@ func loadIndexPageTemplate() (*template.Template, error) {
 
 const CustomDateFormat = "Mon, 2 Jan 2006 15:04 MST"
 
+var logger = log.NewWithOptions(os.Stderr, log.Options{
+	ReportCaller:    true,
+	ReportTimestamp: true,
+	Prefix:          "Secret Santa",
+})
+
 type PlayerData struct {
 	DiscordUser string
 	McUser      string
@@ -56,7 +64,12 @@ type PlayerData struct {
 
 func main() {
 	flag.StringVar(&configFlag, "conf", "config.yml", "Path to the config file")
+	flag.BoolVar(&debugFlag, "debug", false, "Debug mode")
 	flag.Parse()
+
+	if debugFlag {
+		logger.SetLevel(log.DebugLevel)
+	}
 
 	wd := filepath.Dir(configFlag)
 
@@ -64,12 +77,12 @@ func main() {
 
 	openConf, err := os.Open(configFlag)
 	if err != nil {
-		log.Fatalf("Failed to open '%s': %s\n", configFlag, err)
+		logger.Fatal("Failed to open", "file", configFlag, "err", err)
 	}
 	var conf Config
 	err = yaml.NewDecoder(openConf).Decode(&conf)
 	if err != nil {
-		log.Fatal("Failed to decode config:", err)
+		logger.Fatal("Failed to decode config", "err", err)
 	}
 
 	roleMap := make(map[string]struct{})
@@ -90,12 +103,12 @@ func main() {
 
 	pages, err := loadIndexPageTemplate()
 	if err != nil {
-		log.Fatalln("[Error] loadIndexPageTemplate:", err)
+		logger.Fatal("loadIndexPageTemplate:", err)
 	}
 
 	db, err := sql.Open("sqlite3", filepath.Join(wd, "players.db"))
 	if err != nil {
-		log.Fatalln("[Error] Open players.db:", err)
+		logger.Fatal("Open players.db", "err", err)
 	}
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS players
 (
@@ -105,17 +118,18 @@ func main() {
     discord_user TEXT UNIQUE NOT NULL
 );`)
 	if err != nil {
-		log.Fatalln("[Error] Failed to initialise database")
+		logger.Fatal("Failed to initialise database")
 	}
 
 	secretSantaResolve := &sync.RWMutex{}
 	secretSantaUsers, err := resolvePlayers(db, conf.Seed)
 	if err != nil {
-		log.Fatalln("Failed to resolve players:", err)
+		logger.Fatal("Failed to resolve players", "err", err)
 	}
 
 	router := httprouter.New()
 	router.GET("/", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		logger.Debug("Index handler called")
 		sessId := getSessionUuid(rw, req)
 		rw.WriteHeader(http.StatusOK)
 		user, ok := userCache.Get(sessId)
@@ -143,6 +157,7 @@ func main() {
 		})
 	})
 	router.GET("/players", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		logger.Debug("Players handler called")
 		sessId := getSessionUuid(rw, req)
 		user, ok := userCache.Get(sessId)
 		if !ok {
@@ -183,12 +198,14 @@ func main() {
 		http.ServeContent(rw, req, "happy-holidays.png", startTime, bytes.NewReader(happyHolidaysPng))
 	})
 	router.POST("/login", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		logger.Debug("Login handler called")
 		sessId := getSessionUuid(rw, req)
 		stateId := uuid.New()
 		stateCache.Set(stateId, sessId, time.Now().Add(15*time.Minute))
 		http.Redirect(rw, req, oauthConf.AuthCodeURL(stateId.String()), http.StatusFound)
 	})
 	router.POST("/logout", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		logger.Debug("Logout handler called")
 		http.SetCookie(rw, &http.Cookie{
 			Name:     "session-id",
 			Path:     "/",
@@ -198,6 +215,7 @@ func main() {
 		http.Redirect(rw, req, "/", http.StatusFound)
 	})
 	router.POST("/register", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		logger.Debug("Register handler called")
 		mcUser := req.FormValue("mc_user")
 		if mcUser == "" {
 			http.Error(rw, "Missing Minecraft username", http.StatusBadRequest)
@@ -216,7 +234,7 @@ func main() {
 		}
 		_, err := db.Exec(`INSERT INTO players (mc_user, discord_id, discord_user) VALUES (?, ?, ?)`, mcUser, user.User.Id, user.User.Username)
 		if err != nil {
-			log.Printf("Failed to register user %s - %s: %s\n", user.User.Id, user.User.Username, err)
+			logger.Warn("Failed to register user", "id", user.User.Id, "username", user.User.Username, "err", err)
 			http.Error(rw, "Failed to register your user", http.StatusInternalServerError)
 			return
 		}
@@ -226,6 +244,7 @@ func main() {
 		http.Redirect(rw, req, "/", http.StatusFound)
 	})
 	router.GET("/callback", func(rw http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		logger.Debug("Callback handler called")
 		sessId := getSessionUuid(rw, req)
 		stateId, err := uuid.Parse(req.FormValue("state"))
 		if err != nil {
@@ -287,10 +306,10 @@ func main() {
 		Addr:    conf.Listen,
 	}
 	go func() {
-		log.Printf("[SecretSanta] Listening for HTTP requests on '%s'\n", server.Addr)
+		logger.Info("Listening for HTTP requests", "addr", server.Addr)
 		err := server.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Println("[SecretSanta] Listen and serve error:", err)
+			logger.Error("Listen and serve error", "err", err)
 		}
 	}()
 
