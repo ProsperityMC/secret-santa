@@ -17,5 +17,5 @@ require (
 	github.com/MrMelon54/rescheduler v0.0.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 )
