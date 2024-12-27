@@ -10,7 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/1f349/cache"
-	"github.com/MrMelon54/exit-reload"
+	"github.com/mrmelon54/exit-reload"
 	"github.com/google/uuid"
 	"github.com/julienschmidt/httprouter"
 	_ "github.com/mattn/go-sqlite3"
